@@ -147,6 +147,45 @@ _cpm_launch() {
   fi
 }
 
+# ── provider type picker ─────────────────────────────────────────────────
+# Sets _CPM_PROVIDER_TYPE to the chosen value. Pass current type as $1.
+
+_cpm_pick_provider_type() {
+  local current="${1:-}"
+
+  echo "  Provider type:"
+  echo "    1) openai    — OpenAI-compatible APIs (OpenAI, OpenRouter, Ollama, etc.)"
+  echo "    2) anthropic — Anthropic Claude API"
+  echo "    3) azure     — Native Azure OpenAI endpoints"
+  echo ""
+
+  local default_num="1"
+  case "$current" in
+    anthropic) default_num="2" ;;
+    azure)     default_num="3" ;;
+    openai)    default_num="1" ;;
+    "")        default_num="1" ;;
+    *)
+      echo "  ⚠ Current provider type '$current' is invalid. Select a valid type below." >&2
+      echo "" >&2
+      default_num="1"
+      ;;
+  esac
+
+  local type_choice
+  while true; do
+    printf "  Pick (1-3) [%s]: " "$default_num"
+    read -r type_choice
+    type_choice="${type_choice:-$default_num}"
+    case "$type_choice" in
+      1) _CPM_PROVIDER_TYPE="openai";    break ;;
+      2) _CPM_PROVIDER_TYPE="anthropic"; break ;;
+      3) _CPM_PROVIDER_TYPE="azure";     break ;;
+      *) echo "  Invalid choice. Enter 1, 2, or 3." >&2 ;;
+    esac
+  done
+}
+
 # ── add provider/model wizard ────────────────────────────────────────────
 
 _cpm_add() {
@@ -210,9 +249,9 @@ _cpm_add() {
       return 1
     fi
 
-    printf "  Provider type [openai]: "
-    read -r ptype
-    ptype="${ptype:-openai}"
+    _CPM_PROVIDER_TYPE=""
+    _cpm_pick_provider_type
+    ptype="$_CPM_PROVIDER_TYPE"
 
     printf "  API key env var name (e.g. OPENROUTER_API_KEY, blank for none): "
     read -r pkey
@@ -453,9 +492,9 @@ _cpm_update_provider() {
   read -r new_url
   new_url="${new_url:-$cur_url}"
 
-  printf "  Provider type [%s]: " "$cur_type"
-  read -r new_type
-  new_type="${new_type:-$cur_type}"
+  _CPM_PROVIDER_TYPE=""
+  _cpm_pick_provider_type "$cur_type"
+  new_type="$_CPM_PROVIDER_TYPE"
 
   printf "  API key env var [%s]: " "$cur_key"
   read -r new_key
@@ -795,6 +834,17 @@ _cpm_pick() {
   model=$(printf '%s' "$selected" | jq -r '.model')
   max_prompt=$(printf '%s' "$selected" | jq -r '.max_prompt')
   max_output=$(printf '%s' "$selected" | jq -r '.max_output')
+
+  # Validate provider_type before exporting
+  case "$provider_type" in
+    openai|anthropic|azure) ;;
+    *)
+      echo "" >&2
+      echo "⚠ Provider type '$provider_type' is not valid (must be openai, anthropic, or azure)." >&2
+      echo "  Run 'cpm update' to fix this provider's configuration." >&2
+      return 1
+      ;;
+  esac
 
   # Set env vars
   export COPILOT_PROVIDER_BASE_URL="$base_url"

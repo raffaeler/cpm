@@ -99,7 +99,7 @@ Config lives at `~/.config/cpm/models.json`:
 |---|---|---|
 | `name` | Yes | Display name for the provider |
 | `base_url` | Yes | Provider API base URL |
-| `provider_type` | No | `openai` (default), `azure`, or `anthropic` |
+| `provider_type` | No | `openai` (default), `azure`, or `anthropic`. Use `openai` for any OpenAI Chat Completions-compatible endpoint (OpenAI, OpenRouter, Ollama, vLLM, etc.) |
 | `api_key_env` | No | Name of env var holding the API key. Empty or omitted = no auth (e.g. Ollama) |
 | `models[].id` | Yes | Model identifier passed to the provider |
 | `models[].max_prompt_tokens` | No | Sets `COPILOT_PROVIDER_MAX_PROMPT_TOKENS` |
@@ -124,6 +124,20 @@ Or add a block to the `providers` array:
   "models": [
     { "id": "llama3.2", "max_prompt_tokens": 128000, "max_output_tokens": 4096 },
     { "id": "qwen2.5-coder", "max_prompt_tokens": 128000, "max_output_tokens": 8192 }
+  ]
+}
+```
+
+**Using OpenRouter?** Set `provider_type` to `openai` — OpenRouter exposes an OpenAI-compatible API:
+
+```json
+{
+  "name": "OpenRouter",
+  "base_url": "https://openrouter.ai/api/v1",
+  "provider_type": "openai",
+  "api_key_env": "OPENROUTER_API_KEY",
+  "models": [
+    { "id": "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free", "max_prompt_tokens": 128000, "max_output_tokens": 16000 }
   ]
 }
 ```
