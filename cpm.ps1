@@ -97,6 +97,43 @@ function _cpm_clear {
     Write-Host "Cleared all Copilot provider env vars."
 }
 
+# -- provider type picker -------------------------------------------------
+
+function Get-CpmProviderType {
+    param([string]$Current = "")
+
+    $validTypes = @("openai", "anthropic", "azure")
+
+    Write-Host "  Provider type:"
+    Write-Host "    1) openai    - OpenAI-compatible APIs (OpenAI, OpenRouter, Ollama, etc.)"
+    Write-Host "    2) anthropic - Anthropic Claude API"
+    Write-Host "    3) azure     - Native Azure OpenAI endpoints"
+    Write-Host ""
+
+    $defaultNum = switch ($Current) {
+        "anthropic" { "2" }
+        "azure"     { "3" }
+        default     { "1" }
+    }
+
+    if ($Current -and $Current -notin $validTypes) {
+        Write-Warning "Current provider type '$Current' is invalid. Select a valid type below."
+        Write-Host ""
+        $defaultNum = "1"
+    }
+
+    while ($true) {
+        $typeChoice = Read-Host "  Pick (1-3) [$defaultNum]"
+        if (-not $typeChoice) { $typeChoice = $defaultNum }
+        switch ($typeChoice) {
+            "1" { return "openai" }
+            "2" { return "anthropic" }
+            "3" { return "azure" }
+            default { Write-Host "  Invalid choice. Enter 1, 2, or 3." -ForegroundColor Red }
+        }
+    }
+}
+
 # -- add provider/model wizard --------------------------------------------
 
 function _cpm_add {
@@ -139,8 +176,7 @@ function _cpm_add {
         $purl = Read-Host "  Base URL (e.g. https://openrouter.ai/api/v1)"
         if (-not $purl) { Write-Host "Cancelled."; return }
 
-        $ptype = Read-Host "  Provider type [openai]"
-        if (-not $ptype) { $ptype = "openai" }
+        $ptype = Get-CpmProviderType
 
         $pkey = Read-Host "  API key env var name (e.g. OPENROUTER_API_KEY, blank for none)"
 
@@ -313,8 +349,7 @@ function _cpm_update {
         if (-not $newUrl) { $newUrl = $p.base_url }
 
         $curType = if ($p.provider_type) { $p.provider_type } else { "openai" }
-        $newType = Read-Host "  Provider type [$curType]"
-        if (-not $newType) { $newType = $curType }
+        $newType = Get-CpmProviderType -Current $curType
 
         $curKey = if ($p.api_key_env) { $p.api_key_env } else { "" }
         $newKey = Read-Host "  API key env var [$curKey]"
@@ -543,6 +578,14 @@ function _cpm_pick {
     }
 
     $selected = $entries[$choice - 2]
+
+    $validTypes = @("openai", "anthropic", "azure")
+    if ($selected.ProviderType -notin $validTypes) {
+        Write-Host ""
+        Write-Warning "Provider type '$($selected.ProviderType)' is not valid (must be openai, anthropic, or azure)."
+        Write-Host "  Run 'cpm update' to fix this provider's configuration." -ForegroundColor Yellow
+        return
+    }
 
     $env:COPILOT_PROVIDER_BASE_URL = $selected.BaseUrl
     $env:COPILOT_PROVIDER_TYPE = $selected.ProviderType
